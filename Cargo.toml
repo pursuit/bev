@@ -1,9 +1,10 @@
 [package]
 name = "bev"
 version = "0.1.0"
-authors = ["@danielbintar <daniel.bintar@bukalapak.com>"]
+authors = ["@danielbintar <daniel.bintar@gmail.com>"]
 edition = "2018"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+bevy = { version = "0.5.0", features = ["dynamic"] }
