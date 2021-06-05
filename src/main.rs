@@ -12,6 +12,8 @@ fn main() {
         .add_system(button_system.system())
         .add_startup_system(setup_fps.system())
         .add_system(fps_update_system.system())
+        .add_startup_system(setup_form.system())
+        .add_system(input_event_system.system())
         .run();
 }
 
@@ -101,8 +103,6 @@ fn setup_button(
 struct FpsText;
 
 fn setup_fps(mut commands: Commands, asset_server: Res<AssetServer>) {
-    // UI camera
-    commands.spawn_bundle(UiCameraBundle::default());
     // Rich text with multiple sections
     commands
         .spawn_bundle(TextBundle {
@@ -149,3 +149,55 @@ fn fps_update_system(diagnostics: Res<Diagnostics>, mut query: Query<&mut Text, 
     }
 }
 
+struct UsernameText;
+
+fn setup_form(mut commands: Commands, asset_server: Res<AssetServer>) {
+    // Rich text with multiple sections
+    commands
+        .spawn_bundle(TextBundle {
+            style: Style {
+                align_self: AlignSelf::FlexEnd,
+                ..Default::default()
+            },
+            // Use `Text` directly
+            text: Text {
+                // Construct a `Vec` of `TextSection`s
+                sections: vec![
+                    TextSection {
+                        value: "Username: ".to_string(),
+                        style: TextStyle {
+                            font: asset_server.load("fonts/FiraSans-Bold.otf"),
+                            font_size: 60.0,
+                            color: Color::WHITE,
+                        },
+                    },
+                    TextSection {
+                        value: "".to_string(),
+                        style: TextStyle {
+                            font: asset_server.load("fonts/FiraSans-Medium.otf"),
+                            font_size: 60.0,
+                            color: Color::GOLD,
+                        },
+                    },
+                ],
+                ..Default::default()
+            },
+            ..Default::default()
+        })
+        .insert(UsernameText);
+}
+
+fn input_event_system(
+    mut char_input_events: EventReader<ReceivedCharacter>,
+    mut query: Query<&mut Text, With<UsernameText>>,
+) {
+    for mut text in query.iter_mut() {
+        for event in char_input_events.iter() {
+            if event.char == '\x08' {
+                text.sections[1].value.pop();
+            } else {
+                text.sections[1].value.push(event.char);
+            }
+        }
+    }
+}
