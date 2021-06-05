@@ -8,7 +8,7 @@ fn main() {
         .add_plugins(DefaultPlugins)
         .add_plugin(FrameTimeDiagnosticsPlugin::default())
         .init_resource::<ButtonMaterials>()
-        .add_startup_system(setup_button.system())
+        .insert_resource(LoginAction::new())
         .add_system(button_system.system())
         .add_startup_system(setup_fps.system())
         .add_system(fps_update_system.system())
@@ -59,44 +59,6 @@ fn button_system(
             }
         }
     }
-}
-
-fn setup_button(
-    mut commands: Commands,
-    asset_server: Res<AssetServer>,
-    button_materials: Res<ButtonMaterials>,
-) {
-    // ui camera
-    commands.spawn_bundle(UiCameraBundle::default());
-    commands
-        .spawn_bundle(ButtonBundle {
-            style: Style {
-                size: Size::new(Val::Px(150.0), Val::Px(65.0)),
-                // center button
-                margin: Rect::all(Val::Auto),
-                // horizontally center child text
-                justify_content: JustifyContent::Center,
-                // vertically center child text
-                align_items: AlignItems::Center,
-                ..Default::default()
-            },
-            material: button_materials.normal.clone(),
-            ..Default::default()
-        })
-        .with_children(|parent| {
-            parent.spawn_bundle(TextBundle {
-                text: Text::with_section(
-                    "Button",
-                    TextStyle {
-                        font: asset_server.load("fonts/FiraSans-Bold.otf"),
-                        font_size: 40.0,
-                        color: Color::rgb(0.9, 0.9, 0.9),
-                    },
-                    Default::default(),
-                ),
-                ..Default::default()
-            });
-        });
 }
 
 // A unit struct to help identify the FPS UI component, since there may be many Text components
@@ -150,53 +112,159 @@ fn fps_update_system(diagnostics: Res<Diagnostics>, mut query: Query<&mut Text, 
 }
 
 struct UsernameText;
+struct PasswordText;
+struct LoginAction {
+    action: u32,
+}
 
-fn setup_form(mut commands: Commands, asset_server: Res<AssetServer>) {
-    // Rich text with multiple sections
+impl LoginAction {
+    pub fn new() -> Self {
+        Self { action: 0 }
+    }
+}
+
+fn setup_form(
+    mut commands: Commands,
+    asset_server: Res<AssetServer>,
+    mut materials: ResMut<Assets<ColorMaterial>>,
+    button_materials: Res<ButtonMaterials>,
+) {
+    commands.spawn_bundle(UiCameraBundle::default());
+
     commands
-        .spawn_bundle(TextBundle {
+        .spawn_bundle(NodeBundle {
             style: Style {
-                align_self: AlignSelf::FlexEnd,
+                size: Size::new(Val::Percent(100.0), Val::Percent(100.0)),
+                justify_content: JustifyContent::SpaceBetween,
                 ..Default::default()
             },
-            // Use `Text` directly
-            text: Text {
-                // Construct a `Vec` of `TextSection`s
-                sections: vec![
-                    TextSection {
-                        value: "Username: ".to_string(),
-                        style: TextStyle {
-                            font: asset_server.load("fonts/FiraSans-Bold.otf"),
-                            font_size: 60.0,
-                            color: Color::WHITE,
-                        },
-                    },
-                    TextSection {
-                        value: "".to_string(),
-                        style: TextStyle {
-                            font: asset_server.load("fonts/FiraSans-Medium.otf"),
-                            font_size: 60.0,
-                            color: Color::GOLD,
-                        },
-                    },
-                ],
-                ..Default::default()
-            },
+            material: materials.add(Color::NONE.into()),
             ..Default::default()
         })
-        .insert(UsernameText);
+        .with_children(|parent| {
+            // left vertical fill (border)
+            parent
+                .spawn_bundle(TextBundle {
+                    style: Style {
+                        align_self: AlignSelf::FlexEnd,
+                        ..Default::default()
+                    },
+                    // Use `Text` directly
+                    text: Text {
+                        // Construct a `Vec` of `TextSection`s
+                        sections: vec![
+                            TextSection {
+                                value: "Username: ".to_string(),
+                                style: TextStyle {
+                                    font: asset_server.load("fonts/FiraSans-Bold.otf"),
+                                    font_size: 60.0,
+                                    color: Color::WHITE,
+                                },
+                            },
+                            TextSection {
+                                value: "".to_string(),
+                                style: TextStyle {
+                                    font: asset_server.load("fonts/FiraSans-Medium.otf"),
+                                    font_size: 60.0,
+                                    color: Color::GOLD,
+                                },
+                            },
+                        ],
+                        ..Default::default()
+                    },
+                    ..Default::default()
+                })
+                .insert(UsernameText);
+
+            parent
+                .spawn_bundle(TextBundle {
+                    style: Style {
+                        align_self: AlignSelf::FlexEnd,
+                        ..Default::default()
+                    },
+                    // Use `Text` directly
+                    text: Text {
+                        // Construct a `Vec` of `TextSection`s
+                        sections: vec![
+                            TextSection {
+                                value: "Password: ".to_string(),
+                                style: TextStyle {
+                                    font: asset_server.load("fonts/FiraSans-Bold.otf"),
+                                    font_size: 60.0,
+                                    color: Color::WHITE,
+                                },
+                            },
+                            TextSection {
+                                value: "".to_string(),
+                                style: TextStyle {
+                                    font: asset_server.load("fonts/FiraSans-Medium.otf"),
+                                    font_size: 60.0,
+                                    color: Color::GOLD,
+                                },
+                            },
+                        ],
+                        ..Default::default()
+                    },
+                    ..Default::default()
+                })
+                .insert(PasswordText);
+
+            parent
+                .spawn_bundle(ButtonBundle {
+                    style: Style {
+                        size: Size::new(Val::Px(150.0), Val::Px(65.0)),
+                        // center button
+                        margin: Rect::all(Val::Auto),
+                        // horizontally center child text
+                        justify_content: JustifyContent::Center,
+                        // vertically center child text
+                        align_items: AlignItems::Center,
+                        ..Default::default()
+                    },
+                    material: button_materials.normal.clone(),
+                    ..Default::default()
+                })
+                .with_children(|pparent| {
+                    pparent.spawn_bundle(TextBundle {
+                        text: Text::with_section(
+                            "Button",
+                            TextStyle {
+                                font: asset_server.load("fonts/FiraSans-Bold.otf"),
+                                font_size: 40.0,
+                                color: Color::rgb(0.9, 0.9, 0.9),
+                            },
+                            Default::default(),
+                        ),
+                        ..Default::default()
+                    });
+                });
+        });
 }
 
 fn input_event_system(
+    mut action: ResMut<LoginAction>,
     mut char_input_events: EventReader<ReceivedCharacter>,
-    mut query: Query<&mut Text, With<UsernameText>>,
+    mut user_query: Query<&mut Text, (With<UsernameText>, Without<PasswordText>)>,
+    mut password_query: Query<&mut Text, With<PasswordText>>,
 ) {
-    for mut text in query.iter_mut() {
-        for event in char_input_events.iter() {
-            if event.char == '\x08' {
-                text.sections[1].value.pop();
-            } else {
-                text.sections[1].value.push(event.char);
+    for event in char_input_events.iter() {
+        if event.char == ' ' {
+            action.action ^= 1;
+        } else if action.action == 0 {
+            for mut text in user_query.iter_mut() {
+                if event.char == '\x08' {
+                    text.sections[1].value.pop();
+                } else {
+                    text.sections[1].value.push(event.char);
+                }
+            }
+        } else {
+            for mut text in password_query.iter_mut() {
+                if event.char == '\x08' {
+                    text.sections[1].value.pop();
+                } else {
+                    text.sections[1].value.push(event.char);
+                }
             }
         }
     }
