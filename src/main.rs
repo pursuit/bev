@@ -35,6 +35,7 @@ impl FromWorld for ButtonMaterials {
 }
 
 fn button_system(
+    mut action: ResMut<LoginAction>,
     button_materials: Res<ButtonMaterials>,
     mut interaction_query: Query<
         (&Interaction, &mut Handle<ColorMaterial>, &Children),
@@ -43,11 +44,16 @@ fn button_system(
     mut text_query: Query<&mut Text>,
 ) {
     for (interaction, mut material, children) in interaction_query.iter_mut() {
+        if action.action == 2 {
+            return;
+        }
+
         let mut text = text_query.get_mut(children[0]).unwrap();
         match *interaction {
             Interaction::Clicked => {
                 text.sections[0].value = "Connecting".to_string();
                 *material = button_materials.pressed.clone();
+                action.action = 2;
             }
             Interaction::Hovered => {
                 text.sections[0].value = "Hover".to_string();
@@ -247,6 +253,10 @@ fn input_event_system(
     mut user_query: Query<&mut Text, (With<UsernameText>, Without<PasswordText>)>,
     mut password_query: Query<&mut Text, With<PasswordText>>,
 ) {
+    if action.action == 2 {
+        return;
+    }
+
     for event in char_input_events.iter() {
         if event.char == ' ' {
             action.action ^= 1;
