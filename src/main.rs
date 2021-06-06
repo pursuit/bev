@@ -58,13 +58,22 @@ fn button_system(
         (&Interaction, &mut Handle<ColorMaterial>, &Children),
         (Changed<Interaction>, With<Button>),
     >,
-    mut text_query: Query<&mut Text, (Without<UsernameText>, Without<PasswordText>)>,
+    mut text_query: Query<
+        &mut Text,
+        (
+            With<LoginButtonText>,
+            Without<UsernameText>,
+            Without<PasswordText>,
+        ),
+    >,
     mut user_query: Query<&mut Text, (With<UsernameText>, Without<PasswordText>)>,
     mut password_query: Query<&mut Text, With<PasswordText>>,
     mut grpc_conn: ResMut<UserClient<tonic::transport::Channel>>,
 ) {
     let username = user_query.single_mut().unwrap().sections[1].value.clone();
-    let password = password_query.single_mut().unwrap().sections[1].value.clone();
+    let password = password_query.single_mut().unwrap().sections[1]
+        .value
+        .clone();
 
     for (interaction, mut material, children) in interaction_query.iter_mut() {
         let mut text = text_query.get_mut(children[0]).unwrap();
@@ -73,7 +82,7 @@ fn button_system(
                 text.sections[0].value = "Connecting".to_string();
                 *material = button_materials.pressed.clone();
 
-                let response = grpc_conn.login(LoginPayload{
+                let response = grpc_conn.login(LoginPayload {
                     username: username.clone(),
                     password: password.clone().as_bytes().to_vec(),
                 });
@@ -258,26 +267,28 @@ fn setup_form(
                     ..Default::default()
                 })
                 .with_children(|pparent| {
-                    pparent.spawn_bundle(TextBundle {
-                        text: Text::with_section(
-                            "Button",
-                            TextStyle {
-                                font: asset_server.load("fonts/FiraSans-Bold.otf"),
-                                font_size: 40.0,
-                                color: Color::rgb(0.9, 0.9, 0.9),
-                            },
-                            Default::default(),
-                        ),
-                        ..Default::default()
-                    });
-                }).insert(LoginButtonText);
+                    pparent
+                        .spawn_bundle(TextBundle {
+                            text: Text::with_section(
+                                "Button",
+                                TextStyle {
+                                    font: asset_server.load("fonts/FiraSans-Bold.otf"),
+                                    font_size: 40.0,
+                                    color: Color::rgb(0.9, 0.9, 0.9),
+                                },
+                                Default::default(),
+                            ),
+                            ..Default::default()
+                        })
+                        .insert(LoginButtonText);
+                });
         });
 }
 
 fn input_event_system(
     mut action: ResMut<LoginAction>,
     mut char_input_events: EventReader<ReceivedCharacter>,
-    mut user_query: Query<&mut Text, (With<UsernameText>, Without<PasswordText>)>,
+    mut username_query: Query<&mut Text, (With<UsernameText>, Without<PasswordText>)>,
     mut password_query: Query<&mut Text, With<PasswordText>>,
 ) {
     if action.action == 2 {
@@ -288,20 +299,18 @@ fn input_event_system(
         if event.char == ' ' {
             action.action ^= 1;
         } else if action.action == 0 {
-            for mut text in user_query.iter_mut() {
-                if event.char == '\x08' {
-                    text.sections[1].value.pop();
-                } else {
-                    text.sections[1].value.push(event.char);
-                }
+            let username = &mut username_query.single_mut().unwrap().sections[1];
+            if event.char == '\x08' {
+                username.value.pop();
+            } else {
+                username.value.push(event.char);
             }
         } else {
-            for mut text in password_query.iter_mut() {
-                if event.char == '\x08' {
-                    text.sections[1].value.pop();
-                } else {
-                    text.sections[1].value.push(event.char);
-                }
+            let password = &mut password_query.single_mut().unwrap().sections[1];
+            if event.char == '\x08' {
+                password.value.pop();
+            } else {
+                password.value.push(event.char);
             }
         }
     }
