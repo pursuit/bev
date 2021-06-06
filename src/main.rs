@@ -1,29 +1,56 @@
+use std::sync::mpsc;
+use std::sync::Mutex;
+use std::thread;
+
 use bevy::{
     diagnostic::{Diagnostics, FrameTimeDiagnosticsPlugin},
     prelude::*,
 };
 
-use bev::pursuit::api::mortalkin::{user_client::UserClient, LoginPayload};
+use bev::pursuit::api::mortalkin::{user_client::UserClient, LoginPayload, LoginResponse};
 use futures::executor::block_on;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let grpc_client = create_grpc_client().await;
+    let mut grpc_client = create_grpc_client().await;
+
+    let (request_sender, request_receiver) = mpsc::channel();
+    let (response_sender, response_receiver) = mpsc::channel();
+    thread::spawn(move || loop {
+        let payload = request_receiver.recv().unwrap();
+        let response = grpc_client.login(payload);
+        let resp = block_on(response);
+        response_sender.send(resp).unwrap();
+    });
 
     App::build()
         .add_plugins(DefaultPlugins)
         .add_plugin(FrameTimeDiagnosticsPlugin::default())
         .init_resource::<ButtonMaterials>()
-        .insert_resource(grpc_client)
+        .insert_resource(LoginRequestSender {
+            tx: Mutex::new(request_sender),
+        })
+        .insert_resource(LoginResponseReceiver {
+            rx: Mutex::new(response_receiver),
+        })
         .insert_resource(LoginAction::new())
         .add_system(button_system.system())
         .add_startup_system(setup_fps.system())
         .add_system(fps_update_system.system())
         .add_startup_system(setup_form.system())
         .add_system(input_event_system.system())
+        .add_system(login_system.system())
         .run();
 
     Ok(())
+}
+
+struct LoginRequestSender {
+    tx: Mutex<mpsc::Sender<LoginPayload>>,
+}
+
+struct LoginResponseReceiver {
+    rx: Mutex<mpsc::Receiver<Result<tonic::Response<LoginResponse>, tonic::Status>>>,
 }
 
 async fn create_grpc_client() -> UserClient<tonic::transport::Channel> {
@@ -68,8 +95,13 @@ fn button_system(
     >,
     mut user_query: Query<&mut Text, (With<UsernameText>, Without<PasswordText>)>,
     mut password_query: Query<&mut Text, With<PasswordText>>,
-    mut grpc_conn: ResMut<UserClient<tonic::transport::Channel>>,
+    login_request_sender: ResMut<LoginRequestSender>,
+    mut action: ResMut<LoginAction>,
 ) {
+    if action.action == 2 {
+        return;
+    }
+
     let username = user_query.single_mut().unwrap().sections[1].value.clone();
     let password = password_query.single_mut().unwrap().sections[1]
         .value
@@ -79,16 +111,19 @@ fn button_system(
         let mut text = text_query.get_mut(children[0]).unwrap();
         match *interaction {
             Interaction::Clicked => {
+                action.action = 2;
                 text.sections[0].value = "Connecting".to_string();
                 *material = button_materials.pressed.clone();
 
-                let response = grpc_conn.login(LoginPayload {
-                    username: username.clone(),
-                    password: password.clone().as_bytes().to_vec(),
-                });
-
-                let resp = block_on(response);
-                println!("RESPONSE={:?}", resp);
+                login_request_sender
+                    .tx
+                    .lock()
+                    .unwrap()
+                    .send(LoginPayload {
+                        username: username.clone(),
+                        password: password.clone().as_bytes().to_vec(),
+                    })
+                    .unwrap();
             }
             Interaction::Hovered => {
                 text.sections[0].value = "Hover".to_string();
@@ -313,5 +348,20 @@ fn input_event_system(
                 password.value.push(event.char);
             }
         }
+    }
+}
+
+fn login_system(
+    mut action: ResMut<LoginAction>,
+    login_response_receiver: ResMut<LoginResponseReceiver>,
+) {
+    if action.action != 2 {
+        return;
+    }
+
+    let resp = login_response_receiver.rx.lock().unwrap().try_recv();
+    match resp {
+        Ok(_) => action.action = 0,
+        Err(_) => {}
     }
 }
