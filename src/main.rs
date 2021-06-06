@@ -3,11 +3,18 @@ use bevy::{
     prelude::*,
 };
 
-fn main() {
+use bev::pursuit::api::mortalkin::{user_client::UserClient, LoginPayload};
+use futures::executor::block_on;
+
+#[tokio::main]
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let grpc_client = create_grpc_client().await;
+
     App::build()
         .add_plugins(DefaultPlugins)
         .add_plugin(FrameTimeDiagnosticsPlugin::default())
         .init_resource::<ButtonMaterials>()
+        .insert_resource(grpc_client)
         .insert_resource(LoginAction::new())
         .add_system(button_system.system())
         .add_startup_system(setup_fps.system())
@@ -15,6 +22,17 @@ fn main() {
         .add_startup_system(setup_form.system())
         .add_system(input_event_system.system())
         .run();
+
+    Ok(())
+}
+
+async fn create_grpc_client() -> UserClient<tonic::transport::Channel> {
+    let channel = tonic::transport::Channel::from_static("http://[::1]:5004")
+        .connect()
+        .await
+        .expect("Can't create a channel");
+
+    UserClient::new(channel)
 }
 
 struct ButtonMaterials {
@@ -35,25 +53,42 @@ impl FromWorld for ButtonMaterials {
 }
 
 fn button_system(
-    mut action: ResMut<LoginAction>,
     button_materials: Res<ButtonMaterials>,
     mut interaction_query: Query<
         (&Interaction, &mut Handle<ColorMaterial>, &Children),
         (Changed<Interaction>, With<Button>),
     >,
-    mut text_query: Query<&mut Text>,
+    mut text_query: Query<
+        &mut Text,
+        (
+            With<LoginButtonText>,
+            Without<UsernameText>,
+            Without<PasswordText>,
+        ),
+    >,
+    mut user_query: Query<&mut Text, (With<UsernameText>, Without<PasswordText>)>,
+    mut password_query: Query<&mut Text, With<PasswordText>>,
+    mut grpc_conn: ResMut<UserClient<tonic::transport::Channel>>,
 ) {
-    for (interaction, mut material, children) in interaction_query.iter_mut() {
-        if action.action == 2 {
-            return;
-        }
+    let username = user_query.single_mut().unwrap().sections[1].value.clone();
+    let password = password_query.single_mut().unwrap().sections[1]
+        .value
+        .clone();
 
+    for (interaction, mut material, children) in interaction_query.iter_mut() {
         let mut text = text_query.get_mut(children[0]).unwrap();
         match *interaction {
             Interaction::Clicked => {
                 text.sections[0].value = "Connecting".to_string();
                 *material = button_materials.pressed.clone();
-                action.action = 2;
+
+                let response = grpc_conn.login(LoginPayload {
+                    username: username.clone(),
+                    password: password.clone().as_bytes().to_vec(),
+                });
+
+                let resp = block_on(response);
+                println!("RESPONSE={:?}", resp);
             }
             Interaction::Hovered => {
                 text.sections[0].value = "Hover".to_string();
@@ -119,6 +154,7 @@ fn fps_update_system(diagnostics: Res<Diagnostics>, mut query: Query<&mut Text, 
 
 struct UsernameText;
 struct PasswordText;
+struct LoginButtonText;
 struct LoginAction {
     action: u32,
 }
@@ -231,18 +267,20 @@ fn setup_form(
                     ..Default::default()
                 })
                 .with_children(|pparent| {
-                    pparent.spawn_bundle(TextBundle {
-                        text: Text::with_section(
-                            "Button",
-                            TextStyle {
-                                font: asset_server.load("fonts/FiraSans-Bold.otf"),
-                                font_size: 40.0,
-                                color: Color::rgb(0.9, 0.9, 0.9),
-                            },
-                            Default::default(),
-                        ),
-                        ..Default::default()
-                    });
+                    pparent
+                        .spawn_bundle(TextBundle {
+                            text: Text::with_section(
+                                "Button",
+                                TextStyle {
+                                    font: asset_server.load("fonts/FiraSans-Bold.otf"),
+                                    font_size: 40.0,
+                                    color: Color::rgb(0.9, 0.9, 0.9),
+                                },
+                                Default::default(),
+                            ),
+                            ..Default::default()
+                        })
+                        .insert(LoginButtonText);
                 });
         });
 }
@@ -250,7 +288,7 @@ fn setup_form(
 fn input_event_system(
     mut action: ResMut<LoginAction>,
     mut char_input_events: EventReader<ReceivedCharacter>,
-    mut user_query: Query<&mut Text, (With<UsernameText>, Without<PasswordText>)>,
+    mut username_query: Query<&mut Text, (With<UsernameText>, Without<PasswordText>)>,
     mut password_query: Query<&mut Text, With<PasswordText>>,
 ) {
     if action.action == 2 {
@@ -261,20 +299,18 @@ fn input_event_system(
         if event.char == ' ' {
             action.action ^= 1;
         } else if action.action == 0 {
-            for mut text in user_query.iter_mut() {
-                if event.char == '\x08' {
-                    text.sections[1].value.pop();
-                } else {
-                    text.sections[1].value.push(event.char);
-                }
+            let username = &mut username_query.single_mut().unwrap().sections[1];
+            if event.char == '\x08' {
+                username.value.pop();
+            } else {
+                username.value.push(event.char);
             }
         } else {
-            for mut text in password_query.iter_mut() {
-                if event.char == '\x08' {
-                    text.sections[1].value.pop();
-                } else {
-                    text.sections[1].value.push(event.char);
-                }
+            let password = &mut password_query.single_mut().unwrap().sections[1];
+            if event.char == '\x08' {
+                password.value.pop();
+            } else {
+                password.value.push(event.char);
             }
         }
     }
