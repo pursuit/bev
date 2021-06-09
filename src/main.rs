@@ -10,6 +10,12 @@ use bevy::{
 use bev::pursuit::api::mortalkin::{user_client::UserClient, LoginPayload, LoginResponse};
 use futures::executor::block_on;
 
+#[derive(Debug, Clone, Eq, PartialEq, Hash)]
+enum AppState {
+    MainMenu,
+    CharMenu,
+}
+
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut grpc_client = create_grpc_client().await;
@@ -26,6 +32,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     App::build()
         .add_plugins(DefaultPlugins)
         .add_plugin(FrameTimeDiagnosticsPlugin::default())
+        .add_state(AppState::MainMenu)
         .init_resource::<ButtonMaterials>()
         .insert_resource(LoginRequestSender {
             tx: Mutex::new(request_sender),
@@ -353,6 +360,7 @@ fn input_event_system(
 
 fn login_system(
     mut action: ResMut<LoginAction>,
+    mut app_state: ResMut<State<AppState>>,
     login_response_receiver: ResMut<LoginResponseReceiver>,
 ) {
     if action.action != 2 {
@@ -361,7 +369,15 @@ fn login_system(
 
     let resp = login_response_receiver.rx.lock().unwrap().try_recv();
     match resp {
-        Ok(_) => action.action = 0,
+        Ok(body_resp) => {
+            action.action = 0;
+            match body_resp {
+                Ok(_) => {
+                    app_state.set(AppState::CharMenu).unwrap();
+                }
+                Err(_) => {}
+            }
+        }
         Err(_) => {}
     }
 }
