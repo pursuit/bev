@@ -44,12 +44,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             rx: Mutex::new(response_receiver),
         })
         .add_system_set(
-            SystemSet::on_enter(AppState::MainMenu).with_system(setup_form.system().system()),
+            SystemSet::on_enter(AppState::MainMenu).with_system(setup_login_form.system().system()),
         )
         .add_system_set(
             SystemSet::on_update(AppState::MainMenu)
-                .with_system(button_system.system())
-                .with_system(input_event_system.system())
+                .with_system(login_button_system.system())
+                .with_system(login_input_event_system.system())
                 .with_system(login_system.system()),
         )
         .run();
@@ -91,7 +91,7 @@ impl FromWorld for ButtonMaterials {
     }
 }
 
-fn button_system(
+fn login_button_system(
     button_materials: Res<ButtonMaterials>,
     mut interaction_query: Query<
         (&Interaction, &mut Handle<ColorMaterial>, &Children),
@@ -212,7 +212,7 @@ impl LoginAction {
     }
 }
 
-fn setup_form(
+fn setup_login_form(
     mut commands: Commands,
     asset_server: Res<AssetServer>,
     mut materials: ResMut<Assets<ColorMaterial>>,
@@ -332,7 +332,7 @@ fn setup_form(
         });
 }
 
-fn input_event_system(
+fn login_input_event_system(
     mut action: ResMut<LoginAction>,
     mut char_input_events: EventReader<ReceivedCharacter>,
     mut username_query: Query<&mut Text, (With<UsernameText>, Without<PasswordText>)>,
