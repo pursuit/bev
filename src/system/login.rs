@@ -1,14 +1,11 @@
 use std::sync::mpsc;
 use std::sync::Mutex;
 
-use bevy::{
-    diagnostic::{Diagnostics, FrameTimeDiagnosticsPlugin},
-    prelude::*,
-};
+use bevy::prelude::*;
 
 use super::AppState;
 use super::ButtonMaterials;
-use crate::pursuit::api::mortalkin::{user_client::UserClient, LoginPayload, LoginResponse};
+use crate::pursuit::api::mortalkin::{LoginPayload, LoginResponse};
 
 pub struct LoginRequestSender {
     pub tx: Mutex<mpsc::Sender<LoginPayload>>,
