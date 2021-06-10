@@ -10,6 +10,12 @@ use bevy::{
 use bev::pursuit::api::mortalkin::{user_client::UserClient, LoginPayload, LoginResponse};
 use futures::executor::block_on;
 
+#[derive(Debug, Clone, Eq, PartialEq, Hash)]
+enum AppState {
+    MainMenu,
+    CharMenu,
+}
+
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut grpc_client = create_grpc_client().await;
@@ -25,21 +31,30 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     App::build()
         .add_plugins(DefaultPlugins)
-        .add_plugin(FrameTimeDiagnosticsPlugin::default())
+        .add_state(AppState::MainMenu)
         .init_resource::<ButtonMaterials>()
+        .add_plugin(FrameTimeDiagnosticsPlugin::default())
+        .add_startup_system(setup_fps.system())
+        .add_system(fps_update_system.system())
+        .insert_resource(LoginAction::new())
         .insert_resource(LoginRequestSender {
             tx: Mutex::new(request_sender),
         })
         .insert_resource(LoginResponseReceiver {
             rx: Mutex::new(response_receiver),
         })
-        .insert_resource(LoginAction::new())
-        .add_system(button_system.system())
-        .add_startup_system(setup_fps.system())
-        .add_system(fps_update_system.system())
-        .add_startup_system(setup_form.system())
-        .add_system(input_event_system.system())
-        .add_system(login_system.system())
+        .add_system_set(
+            SystemSet::on_enter(AppState::MainMenu).with_system(setup_login_form.system().system()),
+        )
+        .add_system_set(
+            SystemSet::on_update(AppState::MainMenu)
+                .with_system(login_button_system.system())
+                .with_system(login_input_event_system.system())
+                .with_system(login_system.system()),
+        )
+        .add_system_set(
+            SystemSet::on_exit(AppState::MainMenu).with_system(cleanup_login_form.system()),
+        )
         .run();
 
     Ok(())
@@ -79,7 +94,7 @@ impl FromWorld for ButtonMaterials {
     }
 }
 
-fn button_system(
+fn login_button_system(
     button_materials: Res<ButtonMaterials>,
     mut interaction_query: Query<
         (&Interaction, &mut Handle<ColorMaterial>, &Children),
@@ -190,6 +205,7 @@ fn fps_update_system(diagnostics: Res<Diagnostics>, mut query: Query<&mut Text, 
 struct UsernameText;
 struct PasswordText;
 struct LoginButtonText;
+struct LoginFormUI;
 struct LoginAction {
     action: u32,
 }
@@ -200,7 +216,7 @@ impl LoginAction {
     }
 }
 
-fn setup_form(
+fn setup_login_form(
     mut commands: Commands,
     asset_server: Res<AssetServer>,
     mut materials: ResMut<Assets<ColorMaterial>>,
@@ -218,6 +234,7 @@ fn setup_form(
             material: materials.add(Color::NONE.into()),
             ..Default::default()
         })
+        .insert(LoginFormUI)
         .with_children(|parent| {
             // left vertical fill (border)
             parent
@@ -251,6 +268,7 @@ fn setup_form(
                     },
                     ..Default::default()
                 })
+                .insert(LoginFormUI)
                 .insert(UsernameText);
 
             parent
@@ -284,6 +302,7 @@ fn setup_form(
                     },
                     ..Default::default()
                 })
+                .insert(LoginFormUI)
                 .insert(PasswordText);
 
             parent
@@ -301,6 +320,7 @@ fn setup_form(
                     material: button_materials.normal.clone(),
                     ..Default::default()
                 })
+                .insert(LoginFormUI)
                 .with_children(|pparent| {
                     pparent
                         .spawn_bundle(TextBundle {
@@ -315,12 +335,19 @@ fn setup_form(
                             ),
                             ..Default::default()
                         })
+                        .insert(LoginFormUI)
                         .insert(LoginButtonText);
                 });
         });
 }
 
-fn input_event_system(
+fn cleanup_login_form(mut commands: Commands, q: Query<Entity, With<LoginFormUI>>) {
+    for e in q.iter() {
+        commands.entity(e).despawn();
+    }
+}
+
+fn login_input_event_system(
     mut action: ResMut<LoginAction>,
     mut char_input_events: EventReader<ReceivedCharacter>,
     mut username_query: Query<&mut Text, (With<UsernameText>, Without<PasswordText>)>,
@@ -353,6 +380,7 @@ fn input_event_system(
 
 fn login_system(
     mut action: ResMut<LoginAction>,
+    mut app_state: ResMut<State<AppState>>,
     login_response_receiver: ResMut<LoginResponseReceiver>,
 ) {
     if action.action != 2 {
@@ -361,7 +389,15 @@ fn login_system(
 
     let resp = login_response_receiver.rx.lock().unwrap().try_recv();
     match resp {
-        Ok(_) => action.action = 0,
+        Ok(body_resp) => {
+            action.action = 0;
+            match body_resp {
+                Ok(_) => {
+                    app_state.set(AppState::CharMenu).unwrap();
+                }
+                Err(_) => {}
+            }
+        }
         Err(_) => {}
     }
 }
