@@ -9,6 +9,7 @@ use bevy::{
 
 use bev::pursuit::api::mortalkin::user_client::UserClient;
 use bev::system;
+
 use futures::executor::block_on;
 
 #[tokio::main]
