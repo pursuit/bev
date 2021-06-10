@@ -52,6 +52,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 .with_system(login_input_event_system.system())
                 .with_system(login_system.system()),
         )
+        .add_system_set(
+            SystemSet::on_exit(AppState::MainMenu).with_system(cleanup_login_form.system()),
+        )
         .run();
 
     Ok(())
@@ -202,6 +205,7 @@ fn fps_update_system(diagnostics: Res<Diagnostics>, mut query: Query<&mut Text, 
 struct UsernameText;
 struct PasswordText;
 struct LoginButtonText;
+struct LoginFormUI;
 struct LoginAction {
     action: u32,
 }
@@ -230,6 +234,7 @@ fn setup_login_form(
             material: materials.add(Color::NONE.into()),
             ..Default::default()
         })
+        .insert(LoginFormUI)
         .with_children(|parent| {
             // left vertical fill (border)
             parent
@@ -263,6 +268,7 @@ fn setup_login_form(
                     },
                     ..Default::default()
                 })
+                .insert(LoginFormUI)
                 .insert(UsernameText);
 
             parent
@@ -296,6 +302,7 @@ fn setup_login_form(
                     },
                     ..Default::default()
                 })
+                .insert(LoginFormUI)
                 .insert(PasswordText);
 
             parent
@@ -313,6 +320,7 @@ fn setup_login_form(
                     material: button_materials.normal.clone(),
                     ..Default::default()
                 })
+                .insert(LoginFormUI)
                 .with_children(|pparent| {
                     pparent
                         .spawn_bundle(TextBundle {
@@ -327,9 +335,16 @@ fn setup_login_form(
                             ),
                             ..Default::default()
                         })
+                        .insert(LoginFormUI)
                         .insert(LoginButtonText);
                 });
         });
+}
+
+fn cleanup_login_form(mut commands: Commands, q: Query<Entity, With<LoginFormUI>>) {
+    for e in q.iter() {
+        commands.entity(e).despawn();
+    }
 }
 
 fn login_input_event_system(
