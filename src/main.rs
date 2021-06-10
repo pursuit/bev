@@ -31,22 +31,27 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     App::build()
         .add_plugins(DefaultPlugins)
-        .add_plugin(FrameTimeDiagnosticsPlugin::default())
         .add_state(AppState::MainMenu)
         .init_resource::<ButtonMaterials>()
+        .add_plugin(FrameTimeDiagnosticsPlugin::default())
+        .add_startup_system(setup_fps.system())
+        .add_system(fps_update_system.system())
+        .insert_resource(LoginAction::new())
         .insert_resource(LoginRequestSender {
             tx: Mutex::new(request_sender),
         })
         .insert_resource(LoginResponseReceiver {
             rx: Mutex::new(response_receiver),
         })
-        .insert_resource(LoginAction::new())
-        .add_system(button_system.system())
-        .add_startup_system(setup_fps.system())
-        .add_system(fps_update_system.system())
-        .add_startup_system(setup_form.system())
-        .add_system(input_event_system.system())
-        .add_system(login_system.system())
+        .add_system_set(
+            SystemSet::on_enter(AppState::MainMenu).with_system(setup_form.system().system()),
+        )
+        .add_system_set(
+            SystemSet::on_update(AppState::MainMenu)
+                .with_system(button_system.system())
+                .with_system(input_event_system.system())
+                .with_system(login_system.system()),
+        )
         .run();
 
     Ok(())
