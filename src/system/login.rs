@@ -265,7 +265,7 @@ pub fn login_system(
             action.action = 0;
             match body_resp {
                 Ok(_) => {
-                    app_state.set(AppState::CharMenu).unwrap();
+                    app_state.set(AppState::CharSelectionMenu).unwrap();
                 }
                 Err(_) => {}
             }

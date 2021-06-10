@@ -1,11 +1,12 @@
 use bevy::prelude::*;
 
+pub mod char_selection;
 pub mod login;
 
 #[derive(Debug, Clone, Eq, PartialEq, Hash)]
 pub enum AppState {
     MainMenu,
-    CharMenu,
+    CharSelectionMenu,
 }
 
 pub struct ButtonMaterials {

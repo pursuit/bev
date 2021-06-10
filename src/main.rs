@@ -41,7 +41,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         })
         .add_system_set(
             SystemSet::on_enter(system::AppState::MainMenu)
-                .with_system(system::login::setup_login_form.system().system()),
+                .with_system(system::login::setup_login_form.system()),
         )
         .add_system_set(
             SystemSet::on_update(system::AppState::MainMenu)
@@ -52,6 +52,18 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .add_system_set(
             SystemSet::on_exit(system::AppState::MainMenu)
                 .with_system(system::login::cleanup_login_form.system()),
+        )
+        .add_system_set(
+            SystemSet::on_enter(system::AppState::CharSelectionMenu)
+                .with_system(system::char_selection::setup_create_form.system()),
+        )
+        .add_system_set(
+            SystemSet::on_update(system::AppState::CharSelectionMenu)
+                .with_system(system::char_selection::create_button_system.system()),
+        )
+        .add_system_set(
+            SystemSet::on_exit(system::AppState::CharSelectionMenu)
+                .with_system(system::char_selection::cleanup.system()),
         )
         .run();
 
