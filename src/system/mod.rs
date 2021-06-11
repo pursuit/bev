@@ -1,11 +1,33 @@
 use bevy::prelude::*;
 
+pub mod char_creation;
+pub mod char_selection;
 pub mod login;
 
 #[derive(Debug, Clone, Eq, PartialEq, Hash)]
 pub enum AppState {
     MainMenu,
-    CharMenu,
+    CharSelectionMenu,
+    CharCreationMenu,
+}
+
+pub struct Token {
+    pub token: String,
+}
+
+pub struct UserCharacters {
+    pub characters: Vec<Character>,
+}
+
+pub struct Character {
+    pub id: i64,
+    pub name: String,
+    pub position: Option<Position>,
+}
+
+pub struct Position {
+    pub x: i32,
+    pub y: i32,
 }
 
 pub struct ButtonMaterials {
