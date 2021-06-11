@@ -5,6 +5,9 @@ use bevy::prelude::*;
 
 use super::AppState;
 use super::ButtonMaterials;
+use super::Character;
+use super::Token;
+use super::UserCharacters;
 use crate::pursuit::api::mortalkin::{LoginPayload, LoginResponse};
 
 pub struct LoginRequestSender {
@@ -251,6 +254,7 @@ pub fn login_input_event_system(
 }
 
 pub fn login_system(
+    mut commands: Commands,
     mut action: ResMut<LoginAction>,
     mut app_state: ResMut<State<AppState>>,
     login_response_receiver: ResMut<LoginResponseReceiver>,
@@ -261,10 +265,26 @@ pub fn login_system(
 
     let resp = login_response_receiver.rx.lock().unwrap().try_recv();
     match resp {
-        Ok(body_resp) => {
+        Ok(conn_resp) => {
             action.action = 0;
-            match body_resp {
-                Ok(_) => {
+            match conn_resp {
+                Ok(body) => {
+                    let inner = body.into_inner();
+                    commands.insert_resource(Token { token: inner.token });
+
+                    let characters = inner
+                        .characters
+                        .iter()
+                        .map(|character| Character {
+                            id: character.id,
+                            name: character.name.clone(),
+                            position: None,
+                        })
+                        .collect();
+
+                    commands.insert_resource(UserCharacters {
+                        characters: characters,
+                    });
                     app_state.set(AppState::CharSelectionMenu).unwrap();
                 }
                 Err(_) => {}

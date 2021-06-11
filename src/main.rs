@@ -14,15 +14,25 @@ use futures::executor::block_on;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let mut grpc_client = create_grpc_client().await;
+    let mut grpc_client_login = create_grpc_client().await;
+    let mut grpc_client_create_char = create_grpc_client().await;
 
     let (request_sender, request_receiver) = mpsc::channel();
     let (response_sender, response_receiver) = mpsc::channel();
     thread::spawn(move || loop {
         let payload = request_receiver.recv().unwrap();
-        let response = grpc_client.login(payload);
+        let response = grpc_client_login.login(payload);
         let resp = block_on(response);
         response_sender.send(resp).unwrap();
+    });
+
+    let (create_char_request_sender, create_char_request_receiver) = mpsc::channel();
+    let (create_char_response_sender, create_char_response_receiver) = mpsc::channel();
+    thread::spawn(move || loop {
+        let payload = create_char_request_receiver.recv().unwrap();
+        let response = grpc_client_create_char.create_character(payload);
+        let resp = block_on(response);
+        create_char_response_sender.send(resp).unwrap();
     });
 
     App::build()
@@ -38,6 +48,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         })
         .insert_resource(system::login::LoginResponseReceiver {
             rx: Mutex::new(response_receiver),
+        })
+        .insert_resource(system::char_creation::Action::new())
+        .insert_resource(system::char_creation::RequestSender {
+            tx: Mutex::new(create_char_request_sender),
+        })
+        .insert_resource(system::char_creation::ResponseReceiver {
+            rx: Mutex::new(create_char_response_receiver),
         })
         .add_system_set(
             SystemSet::on_enter(system::AppState::MainMenu)
@@ -55,7 +72,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         )
         .add_system_set(
             SystemSet::on_enter(system::AppState::CharSelectionMenu)
-                .with_system(system::char_selection::setup_create_form.system()),
+                .with_system(system::char_selection::setup_system.system()),
         )
         .add_system_set(
             SystemSet::on_update(system::AppState::CharSelectionMenu)
@@ -64,6 +81,20 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .add_system_set(
             SystemSet::on_exit(system::AppState::CharSelectionMenu)
                 .with_system(system::char_selection::cleanup.system()),
+        )
+        .add_system_set(
+            SystemSet::on_enter(system::AppState::CharCreationMenu)
+                .with_system(system::char_creation::setup_create_form.system()),
+        )
+        .add_system_set(
+            SystemSet::on_update(system::AppState::CharCreationMenu)
+                .with_system(system::char_creation::create_button_system.system())
+                .with_system(system::char_creation::input_event_system.system())
+                .with_system(system::char_creation::submit_system.system()),
+        )
+        .add_system_set(
+            SystemSet::on_exit(system::AppState::CharCreationMenu)
+                .with_system(system::char_creation::cleanup.system()),
         )
         .run();
 
