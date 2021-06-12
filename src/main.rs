@@ -76,7 +76,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         )
         .add_system_set(
             SystemSet::on_update(system::AppState::CharSelectionMenu)
-                .with_system(system::char_selection::create_button_system.system()),
+                .with_system(system::char_selection::create_button_system.system())
+                .with_system(system::char_selection::play_button_system.system()),
         )
         .add_system_set(
             SystemSet::on_exit(system::AppState::CharSelectionMenu)
