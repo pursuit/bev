@@ -1,3 +1,7 @@
+use std::sync::Mutex;
+
+use crate::pursuit::api::mortalkin::{GameNotif, PlayGamePayload};
+
 use bevy::prelude::*;
 
 pub mod char_creation;
@@ -9,6 +13,14 @@ pub enum AppState {
     MainMenu,
     CharSelectionMenu,
     CharCreationMenu,
+}
+
+pub struct RequestSender {
+    pub tx: Mutex<futures::channel::mpsc::UnboundedSender<PlayGamePayload>>,
+}
+
+pub struct ResponseReceiver {
+    pub rx: Mutex<futures::channel::mpsc::UnboundedReceiver<GameNotif>>,
 }
 
 pub struct Token {

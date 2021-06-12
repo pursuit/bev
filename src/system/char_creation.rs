@@ -1,14 +1,13 @@
-use bevy::prelude::*;
+use std::sync::mpsc;
+use std::sync::Mutex;
 
 use super::AppState;
 use super::ButtonMaterials;
 use super::Token;
 use super::UserCharacters;
-
 use crate::pursuit::api::mortalkin::{Character, CreateCharacterPayload};
 
-use std::sync::mpsc;
-use std::sync::Mutex;
+use bevy::prelude::*;
 
 pub struct NameText;
 pub struct CreateButtonText;
