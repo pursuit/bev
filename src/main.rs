@@ -2,21 +2,24 @@ use std::sync::mpsc;
 use std::sync::Mutex;
 use std::thread;
 
+use std::time::Duration;
+
 use bevy::{
     diagnostic::{Diagnostics, FrameTimeDiagnosticsPlugin},
     prelude::*,
 };
 
+use bev::pursuit::api::mortalkin::game_client::GameClient;
 use bev::pursuit::api::mortalkin::user_client::UserClient;
 use bev::system;
 
 use futures::executor::block_on;
 
+use tokio::time;
+
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut grpc_client_login = create_grpc_client().await;
-    let mut grpc_client_create_char = create_grpc_client().await;
-
     let (request_sender, request_receiver) = mpsc::channel();
     let (response_sender, response_receiver) = mpsc::channel();
     thread::spawn(move || loop {
@@ -26,6 +29,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         response_sender.send(resp).unwrap();
     });
 
+    let mut grpc_client_create_char = create_grpc_client().await;
     let (create_char_request_sender, create_char_request_receiver) = mpsc::channel();
     let (create_char_response_sender, create_char_response_receiver) = mpsc::channel();
     thread::spawn(move || loop {
@@ -35,6 +39,31 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         create_char_response_sender.send(resp).unwrap();
     });
 
+    let mut grpc_client_play = create_grpc_client_game().await;
+    let (play_request_sender, mut play_request_receiver) = futures::channel::mpsc::unbounded();
+    let (_play_response_sender, play_response_receiver) = futures::channel::mpsc::unbounded();
+
+    let outbound = async_stream::stream! {
+        let mut interval = time::interval(Duration::from_secs(1));
+
+        while let _ = interval.tick().await {
+            let next_payload = play_request_receiver.try_next();
+            if let Ok(Some(payload)) = next_payload {
+                yield payload;
+            }
+        }
+    };
+
+    thread::spawn(move || {
+        let response = block_on(grpc_client_play.play(outbound)).unwrap();
+        let mut inbound = response.into_inner();
+
+        while let Some(game_notif) = block_on(inbound.message()).unwrap() {
+            // play_response_sender.unbounded_send(game_notif).unwrap();
+            println!("{:?}", game_notif);
+        }
+    });
+
     App::build()
         .add_plugins(DefaultPlugins)
         .add_state(system::AppState::MainMenu)
@@ -42,6 +71,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .add_plugin(FrameTimeDiagnosticsPlugin::default())
         .add_startup_system(setup_fps.system())
         .add_system(fps_update_system.system())
+        .insert_resource(system::RequestSender {
+            tx: Mutex::new(play_request_sender),
+        })
+        .insert_resource(system::ResponseReceiver {
+            rx: Mutex::new(play_response_receiver),
+        })
         .insert_resource(system::login::LoginAction::new())
         .insert_resource(system::login::LoginRequestSender {
             tx: Mutex::new(request_sender),
@@ -109,6 +144,15 @@ async fn create_grpc_client() -> UserClient<tonic::transport::Channel> {
         .expect("Can't create a channel");
 
     UserClient::new(channel)
+}
+
+async fn create_grpc_client_game() -> GameClient<tonic::transport::Channel> {
+    let channel = tonic::transport::Channel::from_static("http://[::1]:5004")
+        .connect()
+        .await
+        .expect("Can't create a channel");
+
+    GameClient::new(channel)
 }
 
 // A unit struct to help identify the FPS UI component, since there may be many Text components

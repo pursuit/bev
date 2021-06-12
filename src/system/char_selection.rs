@@ -2,11 +2,17 @@ use bevy::prelude::*;
 
 use super::AppState;
 use super::ButtonMaterials;
+use super::RequestSender;
+use super::Token;
 use super::UserCharacters;
+
+use crate::pursuit::api::mortalkin::PlayGamePayload;
 
 pub struct CreateButton;
 pub struct CreateButtonText;
-pub struct PlayButton;
+pub struct PlayButton {
+    id: i64,
+}
 pub struct PlayButtonText;
 pub struct CleanupEntity;
 
@@ -142,7 +148,9 @@ pub fn setup_system(
                             material: button_materials.normal.clone(),
                             ..Default::default()
                         })
-                        .insert(PlayButton)
+                        .insert(PlayButton {
+                            id: user_characters.characters[n].id,
+                        })
                         .insert(CleanupEntity)
                         .with_children(|pparent| {
                             pparent
@@ -196,16 +204,32 @@ pub fn create_button_system(
 pub fn play_button_system(
     button_materials: Res<ButtonMaterials>,
     mut interaction_query: Query<
-        (&Interaction, &mut Handle<ColorMaterial>, &Children),
+        (
+            &Interaction,
+            &mut Handle<ColorMaterial>,
+            &Children,
+            &PlayButton,
+        ),
         (Changed<Interaction>, With<Button>, With<PlayButton>),
     >,
     mut text_query: Query<&mut Text, With<PlayButtonText>>,
+    request_sender: Res<RequestSender>,
+    token: Res<Token>,
 ) {
-    for (interaction, mut material, children) in interaction_query.iter_mut() {
+    for (interaction, mut material, children, play_button) in interaction_query.iter_mut() {
         let mut text = text_query.get_mut(children[0]).unwrap();
         match *interaction {
             Interaction::Clicked => {
-
+                request_sender
+                    .tx
+                    .lock()
+                    .unwrap()
+                    .unbounded_send(PlayGamePayload {
+                        token: token.token.clone(),
+                        character_id: play_button.id,
+                        position: None,
+                    })
+                    .unwrap();
             }
             Interaction::Hovered => {
                 text.sections[0].value = "Hover".to_string();
