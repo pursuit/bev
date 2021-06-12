@@ -1,14 +1,14 @@
 use std::sync::mpsc;
 use std::sync::Mutex;
 
-use bevy::prelude::*;
-
 use super::AppState;
 use super::ButtonMaterials;
 use super::Character;
 use super::Token;
 use super::UserCharacters;
 use crate::pursuit::api::mortalkin::{LoginPayload, LoginResponse};
+
+use bevy::prelude::*;
 
 pub struct LoginRequestSender {
     pub tx: Mutex<mpsc::Sender<LoginPayload>>,

@@ -1,12 +1,12 @@
-use bevy::prelude::*;
-
 use std::sync::Mutex;
+
+use crate::pursuit::api::mortalkin::{GameNotif, PlayGamePayload};
+
+use bevy::prelude::*;
 
 pub mod char_creation;
 pub mod char_selection;
 pub mod login;
-
-use crate::pursuit::api::mortalkin::{GameNotif, PlayGamePayload};
 
 #[derive(Debug, Clone, Eq, PartialEq, Hash)]
 pub enum AppState {

@@ -1,12 +1,11 @@
-use bevy::prelude::*;
-
 use super::AppState;
 use super::ButtonMaterials;
 use super::RequestSender;
 use super::Token;
 use super::UserCharacters;
-
 use crate::pursuit::api::mortalkin::PlayGamePayload;
+
+use bevy::prelude::*;
 
 pub struct CreateButton;
 pub struct CreateButtonText;

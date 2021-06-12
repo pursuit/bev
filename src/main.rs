@@ -1,20 +1,18 @@
 use std::sync::mpsc;
 use std::sync::Mutex;
 use std::thread;
-
 use std::time::Duration;
+
+use bev::pursuit::api::mortalkin::game_client::GameClient;
+use bev::pursuit::api::mortalkin::user_client::UserClient;
+use bev::system;
 
 use bevy::{
     diagnostic::{Diagnostics, FrameTimeDiagnosticsPlugin},
     prelude::*,
 };
 
-use bev::pursuit::api::mortalkin::game_client::GameClient;
-use bev::pursuit::api::mortalkin::user_client::UserClient;
-use bev::system;
-
 use futures::executor::block_on;
-
 use tokio::time;
 
 #[tokio::main]
