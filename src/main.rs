@@ -66,8 +66,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .add_plugins(DefaultPlugins)
         .add_state(system::AppState::MainMenu)
         .init_resource::<system::ButtonMaterials>()
+        .init_resource::<system::GameCamera>()
         .add_plugin(FrameTimeDiagnosticsPlugin::default())
         .add_startup_system(setup_fps.system())
+        .add_startup_system(system::setup_camera.system())
         .add_system(fps_update_system.system())
         .insert_resource(system::RequestSender {
             tx: Mutex::new(play_request_sender),
@@ -129,6 +131,14 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .add_system_set(
             SystemSet::on_exit(system::AppState::CharCreationMenu)
                 .with_system(system::char_creation::cleanup.system()),
+        )
+        .add_system_set(
+            SystemSet::on_enter(system::AppState::Field).with_system(system::field::setup.system()),
+        )
+        .add_system_set(
+            SystemSet::on_update(system::AppState::Field)
+                .with_system(system::focus_camera.system())
+                .with_system(system::move_player.system()),
         )
         .run();
 

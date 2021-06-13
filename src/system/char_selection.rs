@@ -1,5 +1,6 @@
 use super::AppState;
 use super::ButtonMaterials;
+use super::Character;
 use super::RequestSender;
 use super::Token;
 use super::UserCharacters;
@@ -10,7 +11,7 @@ use bevy::prelude::*;
 pub struct CreateButton;
 pub struct CreateButtonText;
 pub struct PlayButton {
-    id: i64,
+    character: Character,
 }
 pub struct PlayButtonText;
 pub struct CleanupEntity;
@@ -22,8 +23,6 @@ pub fn setup_system(
     mut materials: ResMut<Assets<ColorMaterial>>,
     button_materials: Res<ButtonMaterials>,
 ) {
-    commands.spawn_bundle(UiCameraBundle::default());
-
     for n in 0..3 {
         if user_characters.characters.len() <= n {
             commands
@@ -148,7 +147,7 @@ pub fn setup_system(
                             ..Default::default()
                         })
                         .insert(PlayButton {
-                            id: user_characters.characters[n].id,
+                            character: user_characters.characters[n].clone(),
                         })
                         .insert(CleanupEntity)
                         .with_children(|pparent| {
@@ -214,6 +213,8 @@ pub fn play_button_system(
     mut text_query: Query<&mut Text, With<PlayButtonText>>,
     request_sender: Res<RequestSender>,
     token: Res<Token>,
+    mut app_state: ResMut<State<AppState>>,
+    mut commands: Commands,
 ) {
     for (interaction, mut material, children, play_button) in interaction_query.iter_mut() {
         let mut text = text_query.get_mut(children[0]).unwrap();
@@ -225,10 +226,13 @@ pub fn play_button_system(
                     .unwrap()
                     .unbounded_send(PlayGamePayload {
                         token: token.token.clone(),
-                        character_id: play_button.id,
+                        character_id: play_button.character.id,
                         position: None,
                     })
                     .unwrap();
+
+                commands.insert_resource(play_button.character.clone());
+                app_state.set(AppState::Field).unwrap();
             }
             Interaction::Hovered => {
                 text.sections[0].value = "Hover".to_string();

@@ -39,8 +39,6 @@ pub fn setup_login_form(
     mut materials: ResMut<Assets<ColorMaterial>>,
     button_materials: Res<ButtonMaterials>,
 ) {
-    commands.spawn_bundle(UiCameraBundle::default());
-
     commands
         .spawn_bundle(NodeBundle {
             style: Style {
