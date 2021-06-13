@@ -130,6 +130,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             SystemSet::on_exit(system::AppState::CharCreationMenu)
                 .with_system(system::char_creation::cleanup.system()),
         )
+        .add_system_set(
+            SystemSet::on_enter(system::AppState::Field).with_system(system::field::setup.system()),
+        )
         .run();
 
     Ok(())

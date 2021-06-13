@@ -2,40 +2,31 @@
 pub struct PlayGamePayload {
     #[prost(string, tag = "1")]
     pub token: ::prost::alloc::string::String,
-    #[prost(int64, tag = "2")]
-    pub character_id: i64,
+    #[prost(uint32, tag = "2")]
+    pub character_id: u32,
     #[prost(message, optional, tag = "3")]
     pub position: ::core::option::Option<Position>,
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct GameNotif {
     #[prost(message, repeated, tag = "1")]
-    pub character_on_notifs: ::prost::alloc::vec::Vec<Character>,
-    #[prost(message, repeated, tag = "2")]
-    pub character_position_notifs: ::prost::alloc::vec::Vec<CharacterPosition>,
+    pub characters: ::prost::alloc::vec::Vec<Character>,
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct Character {
-    #[prost(int64, tag = "1")]
-    pub id: i64,
+    #[prost(uint32, tag = "1")]
+    pub id: u32,
     #[prost(string, tag = "2")]
     pub name: ::prost::alloc::string::String,
     #[prost(message, optional, tag = "3")]
     pub position: ::core::option::Option<Position>,
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
-pub struct CharacterPosition {
-    #[prost(int64, tag = "1")]
-    pub character_id: i64,
-    #[prost(message, optional, tag = "2")]
-    pub position: ::core::option::Option<Position>,
-}
-#[derive(Clone, PartialEq, ::prost::Message)]
 pub struct Position {
-    #[prost(int32, tag = "1")]
-    pub x: i32,
-    #[prost(int32, tag = "2")]
-    pub y: i32,
+    #[prost(uint32, tag = "1")]
+    pub x: u32,
+    #[prost(uint32, tag = "2")]
+    pub y: u32,
 }
 #[doc = r" Generated client implementations."]
 pub mod game_client {

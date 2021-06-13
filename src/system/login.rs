@@ -40,6 +40,7 @@ pub fn setup_login_form(
     button_materials: Res<ButtonMaterials>,
 ) {
     commands.spawn_bundle(UiCameraBundle::default());
+    commands.spawn_bundle(OrthographicCameraBundle::new_2d());
 
     commands
         .spawn_bundle(NodeBundle {

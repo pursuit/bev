@@ -6,6 +6,7 @@ use bevy::prelude::*;
 
 pub mod char_creation;
 pub mod char_selection;
+pub mod field;
 pub mod login;
 
 #[derive(Debug, Clone, Eq, PartialEq, Hash)]
@@ -13,6 +14,7 @@ pub enum AppState {
     MainMenu,
     CharSelectionMenu,
     CharCreationMenu,
+    Field,
 }
 
 pub struct RequestSender {
@@ -31,15 +33,17 @@ pub struct UserCharacters {
     pub characters: Vec<Character>,
 }
 
+#[derive(Clone)]
 pub struct Character {
-    pub id: i64,
+    pub id: u32,
     pub name: String,
     pub position: Option<Position>,
 }
 
+#[derive(Clone)]
 pub struct Position {
-    pub x: i32,
-    pub y: i32,
+    pub x: u32,
+    pub y: u32,
 }
 
 pub struct ButtonMaterials {
