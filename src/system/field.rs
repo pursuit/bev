@@ -6,9 +6,8 @@ pub fn setup(
     mut materials: ResMut<Assets<ColorMaterial>>,
     mut game: ResMut<super::GameCamera>,
 ) {
-    let texture_handle = asset_server.load("sprite/icon.png");
     commands.spawn_bundle(SpriteBundle {
-        material: materials.add(texture_handle.clone().into()),
+        material: materials.add(asset_server.load("sprite/red hat boy/Dead (1).png").into()),
         transform: Transform {
             translation: Vec3::new(0.0, 0.0, 0.0),
             ..Default::default()
@@ -19,9 +18,10 @@ pub fn setup(
     game.player.entity = Some(
         commands
             .spawn_bundle(SpriteBundle {
-                material: materials.add(texture_handle.into()),
+                material: materials
+                    .add(asset_server.load("sprite/red hat boy/Idle (1).png").into()),
                 transform: Transform {
-                    translation: Vec3::new(120.0, 0.0, 100.0),
+                    translation: Vec3::new(0.0, 0.0, 0.0),
                     ..Default::default()
                 },
                 ..Default::default()

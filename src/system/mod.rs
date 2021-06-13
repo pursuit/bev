@@ -3,6 +3,7 @@ use std::sync::Mutex;
 use crate::pursuit::api::mortalkin::{GameNotif, PlayGamePayload};
 
 use bevy::prelude::*;
+use bevy::render::{camera::Camera, render_graph::base::camera::CAMERA_2D};
 
 pub mod char_creation;
 pub mod char_selection;
@@ -79,14 +80,7 @@ impl FromWorld for ButtonMaterials {
     }
 }
 
-const BOARD_SIZE_I: usize = 14;
-const BOARD_SIZE_J: usize = 21;
-
-const RESET_FOCUS: [f32; 3] = [
-    BOARD_SIZE_I as f32 / 2.0,
-    0.0,
-    BOARD_SIZE_J as f32 / 2.0 - 0.5,
-];
+const RESET_FOCUS: [f32; 3] = [0.0, 0.0, 0.0];
 
 pub fn setup_camera(mut commands: Commands, mut game: ResMut<GameCamera>) {
     commands.spawn_bundle(UiCameraBundle::default());
@@ -94,13 +88,40 @@ pub fn setup_camera(mut commands: Commands, mut game: ResMut<GameCamera>) {
     game.camera_should_focus = Vec3::from(RESET_FOCUS);
     game.camera_is_focus = game.camera_should_focus;
 
-    let mut camera = OrthographicCameraBundle::new_2d();
+    let camera = OrthographicCameraBundle::new_2d();
     camera.transform.looking_at(game.camera_is_focus, Vec3::Y);
     commands.spawn_bundle(camera);
 }
 
+pub fn focus_camera(
+    time: Res<Time>,
+    mut game: ResMut<GameCamera>,
+    mut transforms: QuerySet<(Query<(&mut Transform, &Camera)>, Query<&Transform>)>,
+) {
+    const SPEED: f32 = 2.0;
+    if let Some(player_entity) = game.player.entity {
+        if let Ok(player_transform) = transforms.q1().get(player_entity) {
+            game.camera_should_focus = player_transform.translation;
+        }
+    }
+
+    // calculate the camera motion based on the difference between where the camera is looking
+    // and where it should be looking; the greater the distance, the faster the motion;
+    // smooth out the camera movement using the frame time
+    let mut camera_motion = game.camera_should_focus - game.camera_is_focus;
+    if camera_motion.length() > 0.2 {
+        camera_motion *= SPEED * time.delta_seconds();
+        game.camera_is_focus += camera_motion;
+    }
+
+    for (mut transform, camera) in transforms.q0_mut().iter_mut() {
+        if camera.name == Some(CAMERA_2D.to_string()) {
+            transform.translation = game.camera_is_focus;
+        }
+    }
+}
+
 pub fn move_player(
-    mut commands: Commands,
     keyboard_input: Res<Input<KeyCode>>,
     mut game: ResMut<GameCamera>,
     mut transforms: Query<&mut Transform, With<MainChar>>,

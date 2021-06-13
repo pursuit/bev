@@ -136,7 +136,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             SystemSet::on_enter(system::AppState::Field).with_system(system::field::setup.system()),
         )
         .add_system_set(
-            SystemSet::on_update(system::AppState::Field).with_system(system::move_player.system()),
+            SystemSet::on_update(system::AppState::Field)
+                .with_system(system::focus_camera.system())
+                .with_system(system::move_player.system()),
         )
         .run();
 
