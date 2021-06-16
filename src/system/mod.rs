@@ -84,5 +84,5 @@ pub fn setup_tile(
     mut tile_sprite_handles: ResMut<TileSpriteHandles>,
     asset_server: Res<AssetServer>,
 ) {
-    tile_sprite_handles.handles = asset_server.load_folder("tiles").unwrap();
+    tile_sprite_handles.handles = asset_server.load_folder("texture").unwrap();
 }
