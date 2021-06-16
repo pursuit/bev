@@ -12,6 +12,8 @@ use bevy::{
     prelude::*,
 };
 
+use bevy_tilemap::prelude::*;
+
 use futures::executor::block_on;
 use tokio::time;
 
@@ -64,12 +66,15 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     App::build()
         .add_plugins(DefaultPlugins)
+        .add_plugins(TilemapDefaultPlugins)
         .add_state(system::AppState::MainMenu)
         .init_resource::<system::ButtonMaterials>()
-        .init_resource::<system::GameCamera>()
+        .init_resource::<system::TileSpriteHandles>()
+        .init_resource::<system::GameMap>()
         .add_plugin(FrameTimeDiagnosticsPlugin::default())
         .add_startup_system(setup_fps.system())
         .add_startup_system(system::setup_camera.system())
+        .add_startup_system(system::setup_tile.system())
         .add_system(fps_update_system.system())
         .insert_resource(system::RequestSender {
             tx: Mutex::new(play_request_sender),
@@ -133,12 +138,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 .with_system(system::char_creation::cleanup.system()),
         )
         .add_system_set(
-            SystemSet::on_enter(system::AppState::Field).with_system(system::field::setup.system()),
-        )
-        .add_system_set(
             SystemSet::on_update(system::AppState::Field)
-                .with_system(system::focus_camera.system())
-                .with_system(system::move_player.system()),
+                .with_system(system::field::load.system())
+                .with_system(system::field::build.system()),
         )
         .run();
 
