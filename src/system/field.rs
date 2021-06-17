@@ -85,8 +85,10 @@ pub fn build(
     }
 
     for mut map in query.iter_mut() {
-        let floor_sprite: Handle<Texture> = asset_server.get_handle("tiles/generic-rpg-Slice.png");
-        let wall_sprite: Handle<Texture> = asset_server.get_handle("tiles/generic-rpg-tile02.png");
+        let floor_sprite: Handle<Texture> =
+            asset_server.get_handle("texture/tiles/generic-rpg-Slice.png");
+        let wall_sprite: Handle<Texture> =
+            asset_server.get_handle("texture/tiles/generic-rpg-tile02.png");
         let texture_atlas = texture_atlases.get(map.texture_atlas()).unwrap();
         let floor_idx = texture_atlas.get_texture_index(&floor_sprite).unwrap();
         let wall_idx = texture_atlas.get_texture_index(&wall_sprite).unwrap();
@@ -114,6 +116,18 @@ pub fn build(
             sprite_index: wall_idx,
             ..Default::default()
         });
+
+        let dwarf_sprite: Handle<Texture> = asset_server.get_handle("texture/sprite/sensei.png");
+        let dwarf_sprite_index = texture_atlas.get_texture_index(&dwarf_sprite).unwrap();
+        // We add in a Z order of 1 to place the tile above the background on Z
+        // order 0.
+        let dwarf_tile = Tile {
+            point: (2, 2),
+            sprite_order: 1,
+            sprite_index: dwarf_sprite_index,
+            ..Default::default()
+        };
+        tiles.push(dwarf_tile);
 
         map.insert_tiles(tiles).unwrap();
         game_state.map_loaded = true;
