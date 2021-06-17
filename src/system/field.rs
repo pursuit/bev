@@ -1,4 +1,8 @@
 use super::GameMap;
+use super::Player;
+use super::PlayerBundle;
+use super::Position;
+use super::Render;
 use super::TileSpriteHandles;
 
 use bevy::{asset::LoadState, prelude::*, sprite::TextureAtlasBuilder};
@@ -75,6 +79,7 @@ pub fn load(
 }
 
 pub fn build(
+    mut commands: Commands,
     mut game_state: ResMut<GameMap>,
     texture_atlases: Res<Assets<TextureAtlas>>,
     asset_server: Res<AssetServer>,
@@ -128,6 +133,15 @@ pub fn build(
             ..Default::default()
         };
         tiles.push(dwarf_tile);
+
+        commands.spawn().insert_bundle(PlayerBundle {
+            player: Player {},
+            position: Position { x: 2, y: 2 },
+            render: Render {
+                sprite_index: dwarf_sprite_index,
+                sprite_order: 1,
+            },
+        });
 
         map.insert_tiles(tiles).unwrap();
         game_state.map_loaded = true;
