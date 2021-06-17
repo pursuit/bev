@@ -3,6 +3,9 @@ use std::sync::Mutex;
 use crate::pursuit::api::mortalkin::{GameNotif, PlayGamePayload};
 
 use bevy::prelude::*;
+use bevy::render::camera::Camera;
+
+use bevy_tilemap::prelude::*;
 
 pub mod char_creation;
 pub mod char_selection;
@@ -40,10 +43,10 @@ pub struct Character {
     pub position: Option<Position>,
 }
 
-#[derive(Clone)]
+#[derive(Default, Copy, Clone, PartialEq)]
 pub struct Position {
-    pub x: u32,
-    pub y: u32,
+    pub x: i32,
+    pub y: i32,
 }
 
 pub struct MainChar;
@@ -80,9 +83,148 @@ pub struct GameMap {
     map_loaded: bool,
 }
 
+impl GameMap {
+    fn try_move_player(
+        &mut self,
+        position: &mut Position,
+        camera_translation: &mut Vec3,
+        delta_xy: (i32, i32),
+    ) {
+        position.x = position.x + delta_xy.0;
+        position.y = position.y + delta_xy.1;
+        camera_translation.x = camera_translation.x + (delta_xy.0 as f32 * 32.);
+        camera_translation.y = camera_translation.y + (delta_xy.1 as f32 * 32.);
+    }
+}
+
 pub fn setup_tile(
     mut tile_sprite_handles: ResMut<TileSpriteHandles>,
     asset_server: Res<AssetServer>,
 ) {
     tile_sprite_handles.handles = asset_server.load_folder("texture").unwrap();
+}
+
+#[derive(Default)]
+pub struct Player {}
+
+#[derive(Bundle)]
+pub struct PlayerBundle {
+    player: Player,
+    position: Position,
+    render: Render,
+}
+
+#[derive(Default)]
+pub struct Render {
+    sprite_index: usize,
+    sprite_order: usize,
+}
+
+fn move_sprite(
+    map: &mut Tilemap,
+    previous_position: Position,
+    position: Position,
+    render: &Render,
+) {
+    // We need to first remove where we were prior.
+    map.clear_tile((previous_position.x, previous_position.y), 1)
+        .unwrap();
+    // We then need to update where we are going!
+    let tile = Tile {
+        point: (position.x, position.y),
+        sprite_index: render.sprite_index,
+        sprite_order: render.sprite_order,
+        ..Default::default()
+    };
+    map.insert_tile(tile).unwrap();
+}
+
+pub fn character_movement(
+    mut game_state: ResMut<GameMap>,
+    keyboard_input: Res<Input<KeyCode>>,
+    time: Res<Time>,
+    mut map_query: Query<(&mut Tilemap, &mut Timer)>,
+    mut player_query: Query<(&mut Position, &Render, &Player)>,
+    mut camera_query: Query<(&Camera, &mut Transform)>,
+) {
+    if !game_state.map_loaded {
+        return;
+    }
+
+    for (mut map, mut timer) in map_query.iter_mut() {
+        timer.tick(time.delta());
+        if !timer.finished() {
+            continue;
+        }
+
+        for (mut position, render, _player) in player_query.iter_mut() {
+            for key in keyboard_input.get_pressed() {
+                for (_camera, mut camera_transform) in camera_query.iter_mut() {
+                    // First we need to store our very current position.
+                    let previous_position = *position;
+
+                    // Of course we need to control where we are going to move our
+                    // dwarf friend.
+                    use KeyCode::*;
+                    match key {
+                        W | Numpad8 | Up | K => {
+                            game_state.try_move_player(
+                                &mut position,
+                                &mut camera_transform.translation,
+                                (0, 1),
+                            );
+                        }
+                        A | Numpad4 | Left | H => {
+                            game_state.try_move_player(
+                                &mut position,
+                                &mut camera_transform.translation,
+                                (-1, 0),
+                            );
+                        }
+                        S | Numpad2 | Down | J => {
+                            game_state.try_move_player(
+                                &mut position,
+                                &mut camera_transform.translation,
+                                (0, -1),
+                            );
+                        }
+                        D | Numpad6 | Right | L => {
+                            game_state.try_move_player(
+                                &mut position,
+                                &mut camera_transform.translation,
+                                (1, 0),
+                            );
+                        }
+
+                        Numpad9 | U => game_state.try_move_player(
+                            &mut position,
+                            &mut camera_transform.translation,
+                            (1, 1),
+                        ),
+                        Numpad3 | M => game_state.try_move_player(
+                            &mut position,
+                            &mut camera_transform.translation,
+                            (1, -1),
+                        ),
+                        Numpad1 | N => game_state.try_move_player(
+                            &mut position,
+                            &mut camera_transform.translation,
+                            (-1, -1),
+                        ),
+                        Numpad7 | Y => game_state.try_move_player(
+                            &mut position,
+                            &mut camera_transform.translation,
+                            (-1, 1),
+                        ),
+
+                        _ => {}
+                    }
+
+                    // Finally now we will move the sprite! ... Provided he had
+                    // moved!
+                    move_sprite(&mut map, previous_position, *position, render);
+                }
+            }
+        }
+    }
 }

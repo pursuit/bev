@@ -140,7 +140,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .add_system_set(
             SystemSet::on_update(system::AppState::Field)
                 .with_system(system::field::load.system())
-                .with_system(system::field::build.system()),
+                .with_system(system::field::build.system())
+                .with_system(system::character_movement.system()),
         )
         .run();
 
