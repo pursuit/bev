@@ -1,3 +1,4 @@
+use super::Character;
 use super::GameMap;
 use super::Player;
 use super::PlayerBundle;
@@ -84,6 +85,7 @@ pub fn build(
     texture_atlases: Res<Assets<TextureAtlas>>,
     asset_server: Res<AssetServer>,
     mut query: Query<&mut Tilemap>,
+    current_char: Res<Character>,
 ) {
     if game_state.map_loaded {
         return;
@@ -135,7 +137,9 @@ pub fn build(
         tiles.push(dwarf_tile);
 
         commands.spawn().insert_bundle(PlayerBundle {
-            player: Player {},
+            player: Player {
+                id: current_char.id,
+            },
             position: Position { x: 2, y: 2 },
             render: Render {
                 sprite_index: dwarf_sprite_index,

@@ -49,8 +49,6 @@ pub struct Position {
     pub y: i32,
 }
 
-pub struct MainChar;
-
 pub struct ButtonMaterials {
     normal: Handle<ColorMaterial>,
     hovered: Handle<ColorMaterial>,
@@ -105,7 +103,9 @@ pub fn setup_tile(
 }
 
 #[derive(Default)]
-pub struct Player {}
+pub struct Player {
+    id: u32,
+}
 
 #[derive(Bundle)]
 pub struct PlayerBundle {
@@ -140,6 +140,7 @@ fn move_sprite(
 }
 
 pub fn character_movement(
+    current_char: Res<Character>,
     mut game_state: ResMut<GameMap>,
     keyboard_input: Res<Input<KeyCode>>,
     time: Res<Time>,
@@ -157,7 +158,12 @@ pub fn character_movement(
             continue;
         }
 
-        for (mut position, render, _player) in player_query.iter_mut() {
+        for (mut position, render, player) in player_query.iter_mut() {
+            if player.id != current_char.id {
+                move_sprite(&mut map, *position, *position, render);
+                continue
+            }
+
             for key in keyboard_input.get_pressed() {
                 for (_camera, mut camera_transform) in camera_query.iter_mut() {
                     // First we need to store our very current position.
@@ -226,5 +232,46 @@ pub fn character_movement(
                 }
             }
         }
+    }
+}
+
+pub fn incoming_notif(
+    mut commands: Commands,
+    asset_server: Res<AssetServer>,
+    response_receiver: Res<ResponseReceiver>,
+    texture_atlases: Res<Assets<TextureAtlas>>,
+    current_char: Res<Character>,
+    mut query: Query<&mut Tilemap>,
+) {
+    let resp = response_receiver.rx.lock().unwrap().try_next();
+    match resp {
+        Ok(Some(conn_resp)) => {
+            for chars in conn_resp.characters.into_iter() {
+                if chars.id == current_char.id {
+                    continue;
+                }
+
+                for map in query.iter_mut() {
+                    let texture_atlas = texture_atlases.get(map.texture_atlas()).unwrap();
+                    let dwarf_sprite: Handle<Texture> =
+                        asset_server.get_handle("texture/sprite/sensei.png");
+                    let dwarf_sprite_index =
+                        texture_atlas.get_texture_index(&dwarf_sprite).unwrap();
+
+                    commands.spawn().insert_bundle(PlayerBundle {
+                        player: Player {
+                            id: chars.id,
+                        },
+                        position: Position { x: 2, y: 2 },
+                        render: Render {
+                            sprite_index: dwarf_sprite_index,
+                            sprite_order: 1,
+                        },
+                    });
+                }
+            }
+        }
+        Ok(None) => {}
+        Err(_) => {}
     }
 }
