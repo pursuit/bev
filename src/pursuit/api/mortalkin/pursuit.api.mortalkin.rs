@@ -23,10 +23,10 @@ pub struct Character {
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct Position {
-    #[prost(uint32, tag = "1")]
-    pub x: u32,
-    #[prost(uint32, tag = "2")]
-    pub y: u32,
+    #[prost(int32, tag = "1")]
+    pub x: i32,
+    #[prost(int32, tag = "2")]
+    pub y: i32,
 }
 #[doc = r" Generated client implementations."]
 pub mod game_client {

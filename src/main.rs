@@ -41,7 +41,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let mut grpc_client_play = create_grpc_client_game().await;
     let (play_request_sender, mut play_request_receiver) = futures::channel::mpsc::unbounded();
-    let (_play_response_sender, play_response_receiver) = futures::channel::mpsc::unbounded();
+    let (play_response_sender, play_response_receiver) = futures::channel::mpsc::unbounded();
 
     let outbound = async_stream::stream! {
         let mut interval = time::interval(Duration::from_secs(1));
@@ -59,8 +59,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         let mut inbound = response.into_inner();
 
         while let Some(game_notif) = block_on(inbound.message()).unwrap() {
-            // play_response_sender.unbounded_send(game_notif).unwrap();
-            println!("{:?}", game_notif);
+            play_response_sender.unbounded_send(game_notif).unwrap();
         }
     });
 
@@ -141,7 +140,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             SystemSet::on_update(system::AppState::Field)
                 .with_system(system::field::load.system())
                 .with_system(system::field::build.system())
-                .with_system(system::character_movement.system()),
+                .with_system(system::character_movement.system())
+                .with_system(system::incoming_notif.system()),
         )
         .run();
 
