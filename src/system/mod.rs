@@ -103,7 +103,9 @@ pub fn setup_tile(
 }
 
 #[derive(Default)]
-pub struct Player {}
+pub struct Player {
+    id: u32,
+}
 
 #[derive(Bundle)]
 pub struct PlayerBundle {
@@ -138,6 +140,7 @@ fn move_sprite(
 }
 
 pub fn character_movement(
+    current_char: Res<Character>,
     mut game_state: ResMut<GameMap>,
     keyboard_input: Res<Input<KeyCode>>,
     time: Res<Time>,
@@ -155,7 +158,12 @@ pub fn character_movement(
             continue;
         }
 
-        for (mut position, render, _player) in player_query.iter_mut() {
+        for (mut position, render, player) in player_query.iter_mut() {
+            if player.id != current_char.id {
+                move_sprite(&mut map, *position, *position, render);
+                continue
+            }
+
             for key in keyboard_input.get_pressed() {
                 for (_camera, mut camera_transform) in camera_query.iter_mut() {
                     // First we need to store our very current position.
@@ -251,7 +259,9 @@ pub fn incoming_notif(
                         texture_atlas.get_texture_index(&dwarf_sprite).unwrap();
 
                     commands.spawn().insert_bundle(PlayerBundle {
-                        player: Player {},
+                        player: Player {
+                            id: chars.id,
+                        },
                         position: Position { x: 2, y: 2 },
                         render: Render {
                             sprite_index: dwarf_sprite_index,
